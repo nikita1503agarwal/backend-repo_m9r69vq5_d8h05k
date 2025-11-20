@@ -1,48 +1,70 @@
 """
-Database Schemas
+Database Schemas for SignifyLearn
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model represents a collection in MongoDB.
+Collection name is the lowercase of the class name (e.g., Gesture -> "gesture").
 """
+from typing import List, Optional, Literal
+from pydantic import BaseModel, Field, HttpUrl
 
-from pydantic import BaseModel, Field
-from typing import Optional
 
-# Example schemas (replace with your own):
+class Gesture(BaseModel):
+    """Sign language gesture catalog item"""
+    name: str = Field(..., description="Gesture name")
+    slug: str = Field(..., description="URL-friendly identifier")
+    category: Literal["letters", "numbers", "basic", "emotions", "activity", "other"] = Field(
+        "basic", description="Category filter"
+    )
+    difficulty: Literal["easy", "medium", "hard"] = Field("easy")
+    thumbnail: Optional[HttpUrl] = Field(None, description="Preview image URL")
+    video_url: Optional[HttpUrl] = Field(None, description="Learning video URL")
+    steps: List[str] = Field(default_factory=list, description="Step-by-step explanation")
+    examples: List[str] = Field(default_factory=list, description="Usage examples in conversation")
+    tags: List[str] = Field(default_factory=list)
 
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+class Module(BaseModel):
+    """Educational module"""
+    title: str
+    slug: str
+    description: Optional[str] = None
+    cover_image: Optional[HttpUrl] = None
+    subtopics: List[str] = Field(default_factory=list)
+    gesture_slugs: List[str] = Field(default_factory=list, description="Gestures covered in this module")
 
-# Add your own schemas here:
-# --------------------------------------------------
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class QuizQuestion(BaseModel):
+    prompt: str
+    media_url: Optional[HttpUrl] = None
+    options: List[str]
+    answer_index: int = Field(ge=0)
+
+
+class Quiz(BaseModel):
+    """Quiz for a module or topic"""
+    title: str
+    slug: str
+    questions: List[QuizQuestion]
+    related_module_slug: Optional[str] = None
+
+
+class Profile(BaseModel):
+    """User profile and progress"""
+    user_id: str
+    name: str
+    email: str
+    avatar_url: Optional[HttpUrl] = None
+    points: int = 0
+    level: int = 1
+    streak_days: int = 0
+    favorite_gesture_slugs: List[str] = Field(default_factory=list)
+    completed_module_slugs: List[str] = Field(default_factory=list)
+
+
+class Accessibility(BaseModel):
+    """Accessibility preferences per user"""
+    user_id: str
+    dark_mode: bool = False
+    high_contrast: bool = False
+    font_scale: float = Field(1.0, ge=0.85, le=1.6)
+    reduce_motion: bool = False
